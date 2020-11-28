@@ -10,7 +10,7 @@ import desmoj.core.simulator.TimeSpan;
 
 
 public class Lavanderia extends Model{
-	
+
 	// Definição do tempo de simulação.
 	private static double tempoSimulacao = 5000;
 	
@@ -26,6 +26,10 @@ public class Lavanderia extends Model{
 	 * lavando suas roupas.
 	 */
 	private MaquinaLavar maquinaLavar;
+
+	private MaquinaLavar maquinaLavar2;
+	private MaquinaLavar maquinaLavar3;
+	private MaquinaLavar maquinaLavar4;
 	
 	/**
 	 * distribuicaoTempoChegadasClientes: distribuição do tempo entre chegadas sucessivas de
@@ -33,6 +37,7 @@ public class Lavanderia extends Model{
 	 * Será usada uma distribuição exponencial, com média de 40 minutos.
 	 */
 	private ContDistExponential distribuicaoTempoChegadasClientes;
+	private ContDistExponential distrTempoCPU;
 	
 	/**
 	 * distribuicaoTempoServicoMaquinaLavar: distribuição do tempo de serviço da máquina de lavar, ou seja,
@@ -113,8 +118,13 @@ public class Lavanderia extends Model{
 		 * Nome da entidade.
 		 * Flag que indica se a entidade deve ou não produzir saídas para um trace de saída da simulação.
 	     */
-		maquinaLavar = new MaquinaLavar (this, "Máquina de lavar", true);
-		
+		maquinaLavar = new MaquinaLavar (this, "CPU", true);
+		maquinaLavar2 = new MaquinaLavar(this, "Disco1", true);
+		maquinaLavar3 = new MaquinaLavar(this, "Disco2", true);
+		maquinaLavar4 = new MaquinaLavar(this, "Disco3", true);
+
+
+
 		/**
 		 * Criação da distribuição do tempo entre chegadas sucessivas de clientes à lavanderia.
 		 * Parâmetros:
@@ -124,7 +134,7 @@ public class Lavanderia extends Model{
 		 * Flag booleano que indica se a distribuição deve ou não produzir saídas para um relatório da simulação.
 	     * Flag que indica se a distribuição deve ou não produzir saídas para um trace de saída.
 	     */
-		distribuicaoTempoChegadasClientes = new ContDistExponential (this, "Distribuição do tempo entre chegadas sucessivas de clientes à lavanderia", 40.0, true, true);
+		distribuicaoTempoChegadasClientes = new ContDistExponential (this, "Distribuição do tempo entre chegadas ", 15, true, true);
 		
 		/**
 		 * Método que indica se os valores gerados por essa distribuição de probabilidade podem ser negativos ou apenas positivos.
@@ -144,7 +154,7 @@ public class Lavanderia extends Model{
 	     * Flag que indica se a distribuição deve ou não produzir saídas para um trace de saída.
 	     */
 		
-		distribuicaoTempoServicoMaquinaLavar = new ContDistUniform (this, "Distribuição do tempo de serviço da máquina de lavar roupas", 20.0, 40.0, true, true);
+		distribuicaoTempoServicoMaquinaLavar = new ContDistUniform (this, "Distribuição do tempo de serviço da máquina de lavar roupas", 5, 25  , true, true);
 		
 		/**
 		 * Método que indica se os valores gerados por essa distribuição de probabilidade podem ser negativos ou apenas positivos.
@@ -211,7 +221,7 @@ public class Lavanderia extends Model{
 		 * Verifica se a máquina de lavar roupas está livre,
 		 * o que indica que o novo cliente que chegou à lavanderia pode utilizá-la.
 		 */
-		if ((maquinaLavar.getOcupada()) == false){
+		if (!(maquinaLavar.getOcupada())){
 			
 			// Modifica o estado da máquina de lavar-roupas indicando que, a partir desse momento, ela está sendo utilizada por um cliente.
 			maquinaLavar.setOcupada(true);
@@ -219,12 +229,24 @@ public class Lavanderia extends Model{
 			// Utilização da máquina de lavar roupas pelo novo cliente que chegou à lavanderia.
 			maquinaLavar.lavar(cliente);
 		}else{
-			/**
-			 * Caso a máquina de lavar roupas esteja ocupada, lavando as roupas trazidas
-			 * por outro cliente da lavanderia, o novo cliente que chegou à lavanderia
-			 * entra em uma fila de espera para utilizar a máquina de lavar.
-			 */
-			filaClientes.insert(cliente);
+			if (!(maquinaLavar2.getOcupada())){
+				maquinaLavar2.setOcupada(true);
+				maquinaLavar2.lavar(cliente);
+			}else{
+				if (!(maquinaLavar3.getOcupada())){
+					maquinaLavar3.setOcupada(true);
+					maquinaLavar3.lavar(cliente);
+				}else{
+					if ((maquinaLavar4.getOcupada())==false){
+						maquinaLavar4.setOcupada(true);
+						maquinaLavar4.lavar(cliente);
+					}
+				}
+
+			}
+			if (maquinaLavar.getOcupada() && maquinaLavar2.getOcupada()
+			&& maquinaLavar3.getOcupada() && maquinaLavar4.getOcupada())
+				filaClientes.insert(cliente);
 		}
 	}
 
@@ -237,7 +259,7 @@ public class Lavanderia extends Model{
 	
 		Cliente cliente;
 		
-		sendTraceNote("Liberando máquina de lavar...");
+		sendTraceNote("Checando disponibilidade...");
 		
 		// Verifica se existe algum cliente aguardando na fila de espera para utilizar a máquina de lavar.
 		if (filaClientes.isEmpty()){
@@ -247,18 +269,45 @@ public class Lavanderia extends Model{
 			 * essa é liberada.
 			 */
 			sendTraceNote("Máquina de lavar esperando clientes...");
+
 			maquinaLavar.setOcupada(false);
+			maquinaLavar2.setOcupada(false);
+			maquinaLavar3.setOcupada(false);
+			maquinaLavar4.setOcupada(false);
 			
 		}else{
 			
-			sendTraceNote("Máquina de lavar será realocada.");
+			sendTraceNote("Organizando onde que vai... ");
 			
 			// O primeiro cliente da fila de espera para utilizar a máquina de lavar é retirado dessa fila.
 			cliente = filaClientes.first();
 			filaClientes.remove(cliente);
 			
 			// Utilização da máquina de lavar-roupas pelo primeiro cliente da fila de espera.
-			maquinaLavar.lavar(cliente);
+			if (!maquinaLavar.getOcupada()){
+				sendTraceNote("CPU recebeu. ");
+				maquinaLavar.lavar(cliente);
+			} else {
+				if (!maquinaLavar2.getOcupada()){
+					sendTraceNote("Disco1 recebeu. ");
+					maquinaLavar2.lavar(cliente);
+				}else{
+					if (!maquinaLavar3.getOcupada()){
+						sendTraceNote("Disco2 recebeu. ");
+						maquinaLavar3.lavar(cliente);
+					}else{
+						if (!maquinaLavar4.getOcupada()){
+							sendTraceNote("Disco3 recebeu. ");
+							maquinaLavar4.lavar(cliente);
+						}
+					}
+
+				}
+
+			}
+
+
+
 		}
 	}
 	
@@ -266,12 +315,17 @@ public class Lavanderia extends Model{
     
 		Lavanderia modeloLavanderia;
 		Experiment experimento;
+
+
 		
 		//Criação do modelo da lavanderia.
-		modeloLavanderia = new Lavanderia (null, "Modelo de uma lavanderia self-service", true, true);
+		modeloLavanderia = new Lavanderia (null, "Modelo de maquina de busca", true, true);
 		
 		// Criação do experimento da lavanderia self-service.
-		experimento = new Experiment ("Experimento da lavanderia");
+		experimento = new Experiment ("Experimento do trabalho simulação");
+
+		// Alterei o numero de seed para 50 conforme especificacao
+		experimento.setSeedGenerator(50);
 		
 		// Conecta o modelo da lavanderia ao experimento.
 		modeloLavanderia.connectToExperiment(experimento);
